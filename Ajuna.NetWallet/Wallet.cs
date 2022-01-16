@@ -7,7 +7,9 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Ajuna.NetApi;
+using Ajuna.NetApi.Model.FrameSystem;
 using Ajuna.NetApi.Model.Rpc;
+using Ajuna.NetApi.Model.SpCore;
 using Ajuna.NetApi.Model.Types;
 using Ajuna.NetWallet;
 using Chaos.NaCl;
@@ -23,7 +25,7 @@ namespace SubstrateNetWallet
     /// </summary>
     public class Wallet
     {
-        private const string Websocketurl = "wss://mogiway-01.dotmog.com";
+        private const string Websocketurl = "ws://127.0.0.1:9944";
 
         private const string FileType = "dat";
 
@@ -65,7 +67,7 @@ namespace SubstrateNetWallet
 
         public Account Account { get; private set; }
 
-        //public AccountInfo AccountInfo { get; private set; }
+        public AccountInfo AccountInfo { get; private set; }
 
         public ChainInfo ChainInfo { get; private set; }
 
@@ -387,8 +389,9 @@ namespace SubstrateNetWallet
         /// <returns></returns>
         public async Task<string> SubscribeAccountInfoAsync()
         {
-            return await Client.SubscribeStorageKeyAsync("System", "Account",
-                new[] {Utils.Bytes2HexString(Utils.GetPublicKeyFrom(Account.Value))},
+            AccountId32 account = new AccountId32();
+            account.Create(Utils.GetPublicKeyFrom(Account.Value));
+            return await Client.SubscribeStorageKeyAsync(Ajuna.NetApi.Model.FrameSystem.SystemStorage.AccountParams(account),
                 CallBackAccountChange, _connectTokenSource.Token);
         }
 
