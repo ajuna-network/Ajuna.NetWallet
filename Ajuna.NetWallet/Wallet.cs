@@ -177,7 +177,7 @@ namespace SubstrateNetWallet
             if (!IsValidPassword(password))
             {
                 Logger.Warn(
-                    "Password isn't is invalid, please provide a proper password. Minmimu eight size and must have upper, lower and digits.");
+                    "Password is invalid, please provide a valid password. Minmimum eight characters long and should include digits as well as upper and  lower case letters.");
                 return false;
             }
 
