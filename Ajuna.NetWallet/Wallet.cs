@@ -1,7 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
@@ -9,15 +7,13 @@ using System.Threading.Tasks;
 using Ajuna.NetApi;
 using Ajuna.NetApi.Model.FrameSystem;
 using Ajuna.NetApi.Model.Rpc;
-using Ajuna.NetApi.Model.SpCore;
 using Ajuna.NetApi.Model.Types;
-using Ajuna.NetWallet;
 using Chaos.NaCl;
 using NLog;
 using Schnorrkel;
 using Schnorrkel.Keys;
 
-namespace SubstrateNetWallet
+namespace Ajuna.NetWallet
 {
     /// <summary>
     /// Basic Wallet implementation
@@ -37,15 +33,16 @@ namespace SubstrateNetWallet
 
         private readonly Random _random = new Random();
 
-        private string _subscriptionIdNewHead, _subscriptionIdFinalizedHeads, _subscriptionAccountInfo;
+        private readonly IWalletSubscriptionHandler _subscriptionHandler;
 
         private FileStore _walletFile;
 
         /// <summary>
         /// Constructor
         /// </summary>
-        public Wallet()
+        public Wallet(IWalletSubscriptionHandler subscriptionHandler)
         {
+            _subscriptionHandler = subscriptionHandler;
             _connectTokenSource = new CancellationTokenSource();
         }
 
@@ -87,8 +84,8 @@ namespace SubstrateNetWallet
         /// <value>
         ///   <c>true</c> if this instance is online; otherwise, <c>false</c>.
         /// </value>
-        public bool IsOnline => IsConnected && _subscriptionIdNewHead != string.Empty &&
-                                _subscriptionIdFinalizedHeads != string.Empty;
+        public bool IsOnline => IsConnected && _subscriptionHandler.IsSubscribedToNewHeadChanges &&
+                              _subscriptionHandler.IsSubscribedToFinalizedHeadsChanges ;
 
         /// <summary>
         /// Determines whether [is valid wallet name] [the specified wallet name].
@@ -210,7 +207,9 @@ namespace SubstrateNetWallet
 
             Account = Account.Build(keyType, getPair.Secret.ToBytes(), getPair.Public.Key);
 
-            if (IsOnline) _subscriptionAccountInfo = await SubscribeAccountInfoAsync();
+            if (IsOnline)
+                await _subscriptionHandler.SubscribeAccountInfoAsync(Client, Account,
+                    CallBackAccountChange);
 
             return true;
         }
@@ -265,8 +264,9 @@ namespace SubstrateNetWallet
 
             Account = Account.Build(keyType, privateKey, publicKey);
 
-            if (IsOnline) _subscriptionAccountInfo = await SubscribeAccountInfoAsync();
-
+            if (IsOnline)
+                await _subscriptionHandler.SubscribeAccountInfoAsync(Client, Account,
+                    CallBackAccountChange);
             return true;
         }
 
@@ -322,8 +322,9 @@ namespace SubstrateNetWallet
             }
 
 
-            if (IsOnline) _subscriptionAccountInfo = await SubscribeAccountInfoAsync();
-
+            if (IsOnline)
+                await _subscriptionHandler.SubscribeAccountInfoAsync(Client, Account,
+                    CallBackAccountChange);
             return true;
         }
 
@@ -387,12 +388,10 @@ namespace SubstrateNetWallet
         /// Subscribe to AccountInfo asynchronous
         /// </summary>
         /// <returns></returns>
-        public async Task<string> SubscribeAccountInfoAsync()
+        public async Task SubscribeAccountInfoAsync()
         {
-            AccountId32 account = new AccountId32();
-            account.Create(Utils.GetPublicKeyFrom(Account.Value));
-            return await Client.SubscribeStorageKeyAsync(Ajuna.NetApi.Model.FrameSystem.SystemStorage.AccountParams(account),
-                CallBackAccountChange, _connectTokenSource.Token);
+            await _subscriptionHandler.SubscribeAccountInfoAsync(Client, Account,
+                newAccountInfo => { AccountInfo = newAccountInfo; });
         }
 
         /// <summary>
@@ -443,62 +442,32 @@ namespace SubstrateNetWallet
             if (IsConnected)
             {
                 Logger.Warn("Starting subscriptions now.");
-                await RefreshSubscriptionsAsync();
+                await StartOrRefreshSubscriptionsAsync();
             }
         }
 
+        
         /// <summary>
         /// Refreshes the subscriptions asynchronous.
         /// </summary>
-        public async Task RefreshSubscriptionsAsync()
+        public async Task StartOrRefreshSubscriptionsAsync()
         {
             Logger.Info("Refreshing all subscriptions");
 
             // unsubscribe all subscriptions
-            await UnsubscribeAllAsync();
-
-            // subscribe to new heads
-            _subscriptionIdNewHead =
-                await Client.Chain.SubscribeNewHeadsAsync(CallBackNewHeads, _connectTokenSource.Token);
-
-            // subscribe to finalized heads
-            _subscriptionIdFinalizedHeads =
-                await Client.Chain.SubscribeFinalizedHeadsAsync(CallBackFinalizedHeads, _connectTokenSource.Token);
-
-            if (IsUnlocked)
-                // subscribe to account info
-                _subscriptionAccountInfo = await SubscribeAccountInfoAsync();
+            await _subscriptionHandler.UnsubscribeAllAsync(Client);
+            
+            await _subscriptionHandler.StartOrRefreshSubscriptionsAsync(Client,Account,CallBackFinalizedHeads,
+                newAccountInfo => { AccountInfo = newAccountInfo;});
         }
 
+ 
         /// <summary>
         /// Unsubscribes all asynchronous.
         /// </summary>
         public async Task UnsubscribeAllAsync()
         {
-            if (!string.IsNullOrEmpty(_subscriptionIdNewHead))
-            {
-                // unsubscribe from new heads
-                if (!await Client.Chain.UnsubscribeNewHeadsAsync(_subscriptionIdNewHead, _connectTokenSource.Token))
-                    Logger.Warn($"Couldn't unsubscribe new heads {_subscriptionIdNewHead} id.");
-                _subscriptionIdNewHead = string.Empty;
-            }
-
-            if (!string.IsNullOrEmpty(_subscriptionIdNewHead))
-            {
-                // unsubscribe from finalized heads
-                if (!await Client.Chain.UnsubscribeFinalizedHeadsAsync(_subscriptionIdFinalizedHeads,
-                    _connectTokenSource.Token))
-                    Logger.Warn($"Couldn't unsubscribe finalized heads {_subscriptionIdFinalizedHeads} id.");
-                _subscriptionIdFinalizedHeads = string.Empty;
-            }
-
-            if (!string.IsNullOrEmpty(_subscriptionAccountInfo))
-            {
-                // unsubscribe from finalized heads
-                if (!await Client.State.UnsubscribeStorageAsync(_subscriptionAccountInfo, _connectTokenSource.Token))
-                    Logger.Warn($"Couldn't unsubscribe storage subscription {_subscriptionAccountInfo} id.");
-                _subscriptionAccountInfo = string.Empty;
-            }
+            await _subscriptionHandler.UnsubscribeAllAsync(Client);
         }
 
         /// <summary>
@@ -515,21 +484,7 @@ namespace SubstrateNetWallet
             await Client.CloseAsync(_connectTokenSource.Token);
         }
 
-        /// <summary>
-        /// Calls the back new heads.
-        /// </summary>
-        /// <param name="subscriptionId">The subscription identifier.</param>
-        /// <param name="header">The header.</param>
-        public virtual void CallBackNewHeads(string subscriptionId, Header header)
-        {
-        }
-
-        /// <summary>
-        /// Calls the back finalized heads.
-        /// </summary>
-        /// <param name="subscriptionId">The subscription identifier.</param>
-        /// <param name="header">The header.</param>
-        public virtual void CallBackFinalizedHeads(string subscriptionId, Header header)
+        protected virtual void CallBackFinalizedHeads(Header header)
         {
             ChainInfo.UpdateFinalizedHeader(header);
 
@@ -537,41 +492,12 @@ namespace SubstrateNetWallet
         }
 
         /// <summary>
-        /// Call back for extrinsic.
-        /// </summary>
-        /// <param name="subscriptionId"></param>
-        /// <param name="extrinsicStatus"></param>
-        public virtual void CallBackExtrinsic(string subscriptionId, ExtrinsicStatus extrinsicStatus)
-        {
-        }
-
-        /// <summary>
         /// Calls the back account change.
         /// </summary>
-        /// <param name="subscriptionId">The subscription identifier.</param>
-        /// <param name="storageChangeSet">The storage change set.</param>
-        public virtual void CallBackAccountChange(string subscriptionId, StorageChangeSet storageChangeSet)
+        /// <param name="newAccountInfo"></param>
+        protected virtual void CallBackAccountChange(AccountInfo newAccountInfo)
         {
-            if (storageChangeSet.Changes == null 
-                || storageChangeSet.Changes.Length == 0 
-                || storageChangeSet.Changes[0].Length < 2)
-            {
-                Logger.Warn("Couldn't update account informations. Please check 'CallBackAccountChange'");
-                return;
-            }
-
-            var accountInfoStr = storageChangeSet.Changes[0][1];
-
-            if (string.IsNullOrEmpty(accountInfoStr))
-            {
-                Logger.Warn("Couldn't update account informations. Account doesn't exists, please check 'CallBackAccountChange'");
-                return;
-            }
-
-            var accountInfo = new AccountInfo();
-            accountInfo.Create(accountInfoStr);
-            AccountInfo = accountInfo;
-
+            AccountInfo = newAccountInfo;
             AccountInfoUpdated?.Invoke(this, AccountInfo);
         }
     }

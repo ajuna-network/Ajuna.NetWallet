@@ -3,19 +3,17 @@ using System.IO;
 using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
-using NUnit.Framework;
-using Ajuna.NetApi;
-using Ajuna.NetApi.Model.Rpc;
-using Ajuna.NetApi.Model.Types.Base;
-using SubstrateNetWallet;
-using Ajuna.NetWallet;
 using Ajuna.NetApi.Model.FrameSystem;
-using Ajuna.NetApi.Model.Types.Primitive;
+using Ajuna.NetApi.Model.Types.Base;
+using Ajuna.NetWallet;
+using NUnit.Framework;
 
-namespace SubstrateNetWalletTest
+namespace Ajuna.NetWalletTests
 {
     public class WalletTest
     {
+        public static IWalletSubscriptionHandler SubscriptionHandler = new WalletSubscriptionHandler();
+        
         [SetUp]
         public void Setup()
         {
@@ -29,7 +27,7 @@ namespace SubstrateNetWalletTest
         [Test]
         public void IsValidPasswordTest()
         {
-            var wallet = new Wallet();
+            var wallet = new Wallet(SubscriptionHandler);
 
             Assert.False(wallet.IsValidPassword("12345678"));
             Assert.False(wallet.IsValidPassword("ABCDEFGH"));
@@ -43,7 +41,7 @@ namespace SubstrateNetWalletTest
         [Test]
         public void IsValidWalletNameTest()
         {
-            var wallet = new Wallet();
+            var wallet = new Wallet(SubscriptionHandler);
 
             Assert.False(wallet.IsValidWalletName("1234"));
             Assert.False(wallet.IsValidWalletName("ABC_/"));
@@ -56,7 +54,7 @@ namespace SubstrateNetWalletTest
         public async Task CreateWalletTestAsync()
         {
             // create new wallet with password and persist
-            var wallet1 = new Wallet();
+            var wallet1 = new Wallet(SubscriptionHandler);
 
             await wallet1.CreateAsync("aA1234dd");
 
@@ -65,7 +63,7 @@ namespace SubstrateNetWalletTest
             Assert.True(wallet1.IsUnlocked);
 
             // read wallet
-            var wallet2 = new Wallet();
+            var wallet2 = new Wallet(SubscriptionHandler);
 
             wallet2.Load();
 
@@ -81,7 +79,7 @@ namespace SubstrateNetWalletTest
             Assert.AreEqual(wallet1.Account.Value, wallet2.Account.Value);
 
 
-            var wallet3 = new Wallet();
+            var wallet3 = new Wallet(SubscriptionHandler);
 
             Assert.False(wallet3.IsCreated);
 
@@ -96,7 +94,7 @@ namespace SubstrateNetWalletTest
 
             Assert.False(wallet3.IsUnlocked);
 
-            var wallet4 = new Wallet();
+            var wallet4 = new Wallet(SubscriptionHandler);
             wallet4.Load("dev_wallet");
 
             Assert.True(wallet4.IsCreated);
@@ -108,7 +106,7 @@ namespace SubstrateNetWalletTest
             var mnemonic = "donor rocket find fan language damp yellow crouch attend meat hybrid pulse";
 
             // create new wallet with password and persist
-            var wallet1 = new Wallet();
+            var wallet1 = new Wallet(SubscriptionHandler);
 
             await wallet1.CreateAsync("aA1234dd", mnemonic, "mnemonic_wallet");
 
@@ -117,7 +115,7 @@ namespace SubstrateNetWalletTest
             Assert.True(wallet1.IsUnlocked);
 
             // read wallet
-            var wallet2 = new Wallet();
+            var wallet2 = new Wallet(SubscriptionHandler);
 
             wallet2.Load("mnemonic_wallet");
 
@@ -137,7 +135,7 @@ namespace SubstrateNetWalletTest
         public async Task ConnectionTestAsync()
         {
             // create new wallet with password and persist
-            var wallet = new Wallet();
+            var wallet = new Wallet(SubscriptionHandler);
             await wallet.StartAsync();
 
             Assert.True(wallet.IsConnected);
@@ -153,7 +151,7 @@ namespace SubstrateNetWalletTest
         [Test]
         public async Task CheckAccountAsync()
         {
-            var wallet = new Wallet();
+            var wallet = new Wallet(SubscriptionHandler);
             wallet.Load("dev_wallet");
 
             Assert.True(wallet.IsCreated);
@@ -169,7 +167,7 @@ namespace SubstrateNetWalletTest
         public async Task CheckStorageCallsAsync()
         {
             // create new wallet with password and persist
-            var wallet = new Wallet();
+            var wallet = new Wallet(SubscriptionHandler);
 
             await wallet.StartAsync();
 
@@ -202,7 +200,7 @@ namespace SubstrateNetWalletTest
         [Test]
         public async Task CheckRaisedChainInfoUpdatedAsync()
         {
-            var wallet = new Wallet();
+            var wallet = new Wallet(SubscriptionHandler);
 
             await wallet.StartAsync();
 
@@ -232,7 +230,7 @@ namespace SubstrateNetWalletTest
         public async Task CheckRaisedAccountInfoUpdatedAsync()
         {
             // create new wallet with password and persist
-            var wallet = new Wallet();
+            var wallet = new Wallet(SubscriptionHandler);
 
             await wallet.StartAsync();
 
