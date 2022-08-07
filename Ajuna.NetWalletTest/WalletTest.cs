@@ -1,16 +1,10 @@
 using System;
 using System.IO;
-using System.Numerics;
-using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
-using Ajuna.NetApi;
-using Ajuna.NetApi.Model.Rpc;
-using Ajuna.NetApi.Model.Types.Base;
-using SubstrateNetWallet;
 using Ajuna.NetWallet;
-using Ajuna.NetApi.Model.FrameSystem;
-using Ajuna.NetApi.Model.Types.Primitive;
+using Ajuna.NetApi.Model.Types;
+using Ajuna.NetApi;
 
 namespace SubstrateNetWalletTest
 {
@@ -53,12 +47,12 @@ namespace SubstrateNetWalletTest
         }
 
         [Test]
-        public async Task CreateWalletTestAsync()
+        public void CreateWalletEd25519Test()
         {
             // create new wallet with password and persist
             var wallet1 = new Wallet();
 
-            await wallet1.CreateAsync("aA1234dd");
+            wallet1.Create("aA1234dd", KeyType.Ed25519);
 
             Assert.True(wallet1.IsCreated);
 
@@ -74,7 +68,7 @@ namespace SubstrateNetWalletTest
             Assert.False(wallet2.IsUnlocked);
 
             // unlock wallet with password
-            await wallet2.UnlockAsync("aA1234dd");
+            wallet2.Unlock("aA1234dd");
 
             Assert.True(wallet2.IsUnlocked);
 
@@ -92,7 +86,7 @@ namespace SubstrateNetWalletTest
             Assert.False(wallet3.IsUnlocked);
 
             // unlock wallet with password
-            await wallet3.UnlockAsync("aA4321dd");
+            wallet3.Unlock("aA4321dd");
 
             Assert.False(wallet3.IsUnlocked);
 
@@ -103,18 +97,70 @@ namespace SubstrateNetWalletTest
         }
 
         [Test]
-        public async Task CreateMnemonicWalletTestAsync()
+        public void CreateWalletSr25519Test()
         {
-            var mnemonic = "donor rocket find fan language damp yellow crouch attend meat hybrid pulse";
-
             // create new wallet with password and persist
             var wallet1 = new Wallet();
 
-            await wallet1.CreateAsync("aA1234dd", mnemonic, "mnemonic_wallet");
+            wallet1.Create("aA1234dd", KeyType.Sr25519);
 
             Assert.True(wallet1.IsCreated);
 
             Assert.True(wallet1.IsUnlocked);
+
+            // read wallet
+            var wallet2 = new Wallet();
+
+            wallet2.Load();
+
+            Assert.True(wallet2.IsCreated);
+
+            Assert.False(wallet2.IsUnlocked);
+
+            // unlock wallet with password
+            wallet2.Unlock("aA1234dd");
+
+            Assert.True(wallet2.IsUnlocked);
+
+            Assert.AreEqual(wallet1.Account.Value, wallet2.Account.Value);
+
+            var wallet3 = new Wallet();
+
+            Assert.False(wallet3.IsCreated);
+
+            wallet3.Load();
+
+            Assert.True(wallet3.IsCreated);
+
+            Assert.False(wallet3.IsUnlocked);
+
+            // unlock wallet with password
+            wallet3.Unlock("aA4321dd");
+
+            Assert.False(wallet3.IsUnlocked);
+
+            var wallet4 = new Wallet();
+            wallet4.Load("dev_wallet");
+
+            Assert.True(wallet4.IsCreated);
+        }
+
+        [Test]
+        public void CreateMnemonicSr25519Test()
+        {
+            //var mnemonic = "donor rocket find fan language damp yellow crouch attend meat hybrid pulse";
+            var mnemonic = "tornado glad segment lift squirrel top ball soldier joy sudden edit advice";
+
+            // create new wallet with password and persist
+            var wallet1 = new Wallet();
+
+            wallet1.Create("aA1234dd", mnemonic, KeyType.Sr25519, Mnemonic.BIP39Wordlist.English , "mnemonic_wallet");
+
+            Assert.True(wallet1.IsCreated);
+
+            Assert.True(wallet1.IsUnlocked);
+
+            Assert.AreEqual("5DUUUnqM2wtsr7Acc4T5usvN3pmkdX5shkKkPEFtH7mEdk1g", wallet1.Account.Value);
 
             // read wallet
             var wallet2 = new Wallet();
@@ -126,7 +172,7 @@ namespace SubstrateNetWalletTest
             Assert.False(wallet2.IsUnlocked);
 
             // unlock wallet with password
-            await wallet2.UnlockAsync("aA1234dd");
+            wallet2.Unlock("aA1234dd");
 
             Assert.True(wallet2.IsUnlocked);
 
@@ -134,135 +180,51 @@ namespace SubstrateNetWalletTest
         }
 
         [Test]
-        public async Task ConnectionTestAsync()
+        public void CreateMnemonicEd25519Test()
         {
+            var mnemonic = "tornado glad segment lift squirrel top ball soldier joy sudden edit advice";
+
             // create new wallet with password and persist
-            var wallet = new Wallet();
-            await wallet.StartAsync();
+            var wallet1 = new Wallet();
 
-            Assert.True(wallet.IsConnected);
+            wallet1.Create("aA1234dd", mnemonic, KeyType.Ed25519, Mnemonic.BIP39Wordlist.English, "mnemonic_wallet");
 
-            Assert.AreEqual("Development", wallet.ChainInfo.Chain);
+            Assert.True(wallet1.IsCreated);
 
-            await wallet.StopAsync();
+            Assert.True(wallet1.IsUnlocked);
 
-            Assert.False(wallet.IsConnected);
+            Assert.AreEqual("5HDyAVCfErKADLgtdhGKPiDbFStPP2cXAzNnJh4qbFaECkWY", wallet1.Account.Value);
+ 
+            // read wallet
+            var wallet2 = new Wallet();
+
+            wallet2.Load("mnemonic_wallet");
+
+            Assert.True(wallet2.IsCreated);
+
+            Assert.False(wallet2.IsUnlocked);
+
+            // unlock wallet with password
+            wallet2.Unlock("aA1234dd");
+
+            Assert.True(wallet2.IsUnlocked);
+
+            Assert.AreEqual(wallet1.Account.Value, wallet2.Account.Value);
         }
 
-
         [Test]
-        public async Task CheckAccountAsync()
+        public void CheckAccount()
         {
             var wallet = new Wallet();
             wallet.Load("dev_wallet");
 
             Assert.True(wallet.IsCreated);
 
-            await wallet.UnlockAsync("aA1234dd");
+            wallet.Unlock("aA1234dd");
 
             Assert.True(wallet.IsUnlocked);
 
             Assert.AreEqual("5FfzQe73TTQhmSQCgvYocrr6vh1jJXEKB8xUB6tExfpKVCEZ", wallet.Account.Value);
-        }
-
-        [Test]
-        public async Task CheckStorageCallsAsync()
-        {
-            // create new wallet with password and persist
-            var wallet = new Wallet();
-
-            await wallet.StartAsync();
-
-            Assert.True(wallet.IsConnected);
-
-            wallet.Load("dev_wallet");
-
-            await wallet.UnlockAsync("aA1234dd");
-            Assert.True(wallet.IsUnlocked);
-
-            Assert.AreEqual("5FfzQe73TTQhmSQCgvYocrr6vh1jJXEKB8xUB6tExfpKVCEZ", wallet.Account.Value);
-
-            Thread.Sleep(1000);
-
-            Assert.True(BigInteger.Parse("400000000000000") < wallet.AccountInfo.Data.Free.Value);
-            Assert.True(BigInteger.Parse("600000000000000") > wallet.AccountInfo.Data.Free.Value);
-
-            var blockNumber = new BlockNumber();
-            blockNumber.Create(10);
-            var blockHash = await wallet.Client.Chain.GetBlockHashAsync(blockNumber);
-
-            var header = await wallet.Client.Chain.GetHeaderAsync(blockHash);
-            Assert.AreEqual(10, header.Number.Value);
-
-            await wallet.StopAsync();
-
-            Assert.False(wallet.IsConnected);
-        }
-
-        [Test]
-        public async Task CheckRaisedChainInfoUpdatedAsync()
-        {
-            var wallet = new Wallet();
-
-            await wallet.StartAsync();
-
-            Assert.True(wallet.IsConnected);
-
-            Assert.IsTrue(wallet.Load("dev_wallet"));
-
-            ChainInfo test = null;
-            
-            void OnChainInfoUpdated(object sender, ChainInfo chainInfo)
-            {
-                test = chainInfo;
-            }
-
-            wallet.ChainInfoUpdated += OnChainInfoUpdated;
-
-            Thread.Sleep(5000);
-
-            Assert.IsNotNull(test);
-
-            Assert.AreEqual("DOTMog Node", test.Name);
-
-            wallet.ChainInfoUpdated -= OnChainInfoUpdated;
-        }
-
-        [Test]
-        public async Task CheckRaisedAccountInfoUpdatedAsync()
-        {
-            // create new wallet with password and persist
-            var wallet = new Wallet();
-
-            await wallet.StartAsync();
-
-            Assert.True(wallet.IsConnected);
-
-            wallet.Load("dev_wallet");
-
-            Assert.True(wallet.IsCreated);
-
-            await wallet.UnlockAsync("aA1234dd");
-
-            Assert.True(wallet.IsUnlocked);
-
-            Assert.AreEqual("5FfzQe73TTQhmSQCgvYocrr6vh1jJXEKB8xUB6tExfpKVCEZ", wallet.Account.Value);
-
-            AccountInfo test = null;
-
-            wallet.AccountInfoUpdated += delegate(object sender, AccountInfo accountInfo)
-            {
-                test = accountInfo;
-            };
-
-            Thread.Sleep(3000);
-
-            Assert.IsNotNull(test);
-
-            Assert.AreEqual(2, test.Nonce.Value);
-
-            Assert.True(BigInteger.Parse("400000000000000") < test.Data.Free.Value);
-            Assert.True(BigInteger.Parse("600000000000000") > test.Data.Free.Value);
         }
 
     }
