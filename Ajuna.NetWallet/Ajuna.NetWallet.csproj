@@ -2,27 +2,27 @@
 
 	<PropertyGroup>
 		<PackageId>Ajuna.NetWallet</PackageId>
-		<TargetFrameworks>netstandard2.0</TargetFrameworks>
-		<Version>0.1.0</Version>
+		<TargetFrameworks>netstandard2.0;net6.0</TargetFrameworks>
+		<Version>0.2.0</Version>
 		<Company>BloGa Tech AG</Company>
 		<Authors>Cedric Decoster</Authors>
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 		<Description>Ajuna Network Substrate NETStandard2.0 Wallet</Description>
 		<PackageProjectUrl>https://ajuna.io</PackageProjectUrl>
 		<PackageLicenseFile>LICENSE</PackageLicenseFile>
-		<RepositoryUrl>https://github.com/ajuna-network/Ajuna.NetApi</RepositoryUrl>
+		<RepositoryUrl>https://github.com/ajuna-network/Ajuna.NetWallet</RepositoryUrl>
 		<RepositoryType>git</RepositoryType>
 	</PropertyGroup>
-
-	<ItemGroup>
-		<PackageReference Include="Ajuna.NetApi" Version="0.1.19" />
-	</ItemGroup>
 
 	<ItemGroup>
 		<None Include="..\LICENSE">
 			<Pack>True</Pack>
 			<PackagePath></PackagePath>
 		</None>
+	</ItemGroup>
+
+	<ItemGroup>
+	  <PackageReference Include="Ajuna.NetApi" Version="0.2.0" />
 	</ItemGroup>
 
 </Project>
