@@ -41,6 +41,7 @@ wallet.IsValidPassword("ABCDefg1"); // true
 ### Create wallet with name, password and mnemonic
 
 ```c#
+// Declare name, password and mnemonic
 var walletName = "mnemonic_wallet";
 var walletPassword = "aA1234dd"
 var walletMnemonic = "tornado glad segment lift squirrel top ball soldier joy sudden edit advice";
@@ -62,9 +63,10 @@ var isCreated = wallet.IsCreated;
 
 var walletToUnlock = new Wallet();
 
+// Load wallet
 walletToUnlock.Load("mnemonic_wallet");
 
-// unlock wallet with password
+// Unlock wallet with password
 walletToUnlock.Unlock("aA1234dd");
 
 // Confirm that wallet is unlocked
