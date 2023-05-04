@@ -3,8 +3,8 @@ using System.IO;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using Ajuna.NetWallet;
-using Ajuna.NetApi.Model.Types;
-using Ajuna.NetApi;
+using Substrate.NetApi.Model.Types;
+using Substrate.NetApi;
 
 namespace SubstrateNetWalletTest
 {

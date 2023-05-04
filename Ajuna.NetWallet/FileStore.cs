@@ -1,4 +1,4 @@
-﻿using Ajuna.NetApi.Model.Types;
+﻿using Substrate.NetApi.Model.Types;
 
 namespace Ajuna.NetWallet
 {

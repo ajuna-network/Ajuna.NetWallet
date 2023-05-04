@@ -2,8 +2,8 @@
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
-using Ajuna.NetApi;
-using Ajuna.NetApi.Model.Types;
+using Substrate.NetApi;
+using Substrate.NetApi.Model.Types;
 using Chaos.NaCl;
 using Schnorrkel;
 using Schnorrkel.Keys;
